@@ -72,16 +72,25 @@
 </div>
 
 <script>
-    // --- SUBSTITUA PELAS SUAS CREDENCIAIS DO RAPIDAPI ---
+    // Suas credenciais da RapidAPI
     const RAPIDAPI_KEY = '53437ea1famsh3af8f3a44a02dd4p1fcc2ejsn9ebe5c3a2bef'; 
-    const RAPIDAPI_HOST = 'youtube-media-downloader.p.rapidapi.com'; // Ex: youtube-mp36.p.rapidapi.com
+    const RAPIDAPI_HOST = 'youtube-media-downloader.p.rapidapi.com';
+
+    // Função para extrair o ID de qualquer formato de link do YouTube
+    function extrairVideoId(url) {
+        const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+        const match = url.match(regex);
+        return match ? match[1] : null;
+    }
 
     async function iniciarDownload(formato) {
         const urlInput = document.getElementById('yt-url').value;
         const statusDiv = document.getElementById('status');
 
-        if (!urlInput) {
-            statusDiv.innerText = "Por favor, insira um link válido.";
+        const videoId = extrairVideoId(urlInput);
+
+        if (!videoId) {
+            statusDiv.innerText = "Link inválido. Por favor, cole a URL completa de um vídeo do YouTube.";
             statusDiv.style.color = "red";
             return;
         }
@@ -89,10 +98,8 @@
         statusDiv.innerText = `Processando ${formato.toUpperCase()}... Aguarde.`;
         statusDiv.style.color = "#333";
 
-        // NOTA: A URL de fetch abaixo depende de qual API exata você escolheu no RapidAPI.
-        // O exemplo abaixo é genérico e serve para ilustrar a lógica. Você deve
-        // copiar o "Code Snippet" exato fornecido pela aba "Endpoints" do RapidAPI.
-        const urlApi = `https://${RAPIDAPI_HOST}/endpoint_da_api?url=${encodeURIComponent(urlInput)}&format=${formato}`;
+        // URL da API dinâmica baseada no ID extraído
+        const urlApi = `https://${RAPIDAPI_HOST}/v2/video/details?videoId=${videoId}&urlAccess=normal&videos=auto&audios=auto`;
         
         const options = {
             method: 'GET',
@@ -105,26 +112,38 @@
         try {
             const response = await fetch(urlApi, options);
             const data = await response.json();
+            
+            // Inspecione o objeto completo no console do navegador para entender a estrutura
+            console.log("Resposta da API:", data);
 
-            // A API geralmente retorna um JSON contendo o link direto de download (ex: data.link ou data.url)
-            // Verifique a documentação da sua API escolhida para saber o nome exato da variável de retorno.
-            if (data.link) { 
+            let linkDownload = null;
+
+            // Lógica de navegação no JSON (Pode variar dependendo da estrutura exata da API)
+            if (formato === 'mp4' && data.videos && data.videos.length > 0) {
+                // Pega a primeira opção de vídeo disponível
+                linkDownload = data.videos[0].url; 
+            } else if (formato === 'mp3' && data.audios && data.audios.length > 0) {
+                // Pega a primeira opção de áudio disponível
+                linkDownload = data.audios[0].url; 
+            }
+
+            if (linkDownload) { 
                 statusDiv.innerText = "Pronto! Iniciando download...";
                 statusDiv.style.color = "green";
                 
-                // Abre o link retornado pela API em uma nova aba, o que inicia o download no navegador
-                window.open(data.link, '_blank');
+                // Redireciona o usuário para o link direto do arquivo
+                window.location.href = linkDownload;
             } else {
-                statusDiv.innerText = "Erro ao gerar o link. Tente outro vídeo.";
+                statusDiv.innerText = "Formato não encontrado ou indisponível para este vídeo.";
                 statusDiv.style.color = "red";
             }
         } catch (error) {
-            console.error(error);
-            statusDiv.innerText = "Erro de conexão com o servidor.";
+            console.error("Erro na requisição:", error);
+            statusDiv.innerText = "Erro de conexão com o servidor. Tente novamente.";
             statusDiv.style.color = "red";
         }
     }
 </script>
-
+    
 </body>
 </html>
