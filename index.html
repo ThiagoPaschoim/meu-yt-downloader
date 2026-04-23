@@ -119,12 +119,13 @@
             let linkDownload = null;
 
             // Lógica de navegação no JSON (Pode variar dependendo da estrutura exata da API)
-            if (formato === 'mp4' && data.videos && data.videos.length > 0) {
-                // Pega a primeira opção de vídeo disponível
-                linkDownload = data.videos[0].url; 
-            } else if (formato === 'mp3' && data.audios && data.audios.length > 0) {
-                // Pega a primeira opção de áudio disponível
-                linkDownload = data.audios[0].url; 
+            // Lógica nova, mapeada corretamente para a resposta da API
+            if (formato === 'mp4' && data.videos && data.videos.items && data.videos.items.length > 0) {
+                // Pega a URL do primeiro item da lista de vídeos
+                linkDownload = data.videos.items[0].url; 
+            } else if (formato === 'mp3' && data.audios && data.audios.items && data.audios.items.length > 0) {
+                // Pega a URL do primeiro item da lista de áudios
+                linkDownload = data.audios.items[0].url; 
             }
 
             if (linkDownload) { 
