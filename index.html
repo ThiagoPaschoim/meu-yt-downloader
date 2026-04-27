@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YT Downloader Pessoal</title>
+    <title>YT Downloader com Corte</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,7 +23,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             text-align: center;
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
         }
         input[type="text"] {
             width: 90%;
@@ -32,6 +32,30 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             font-size: 16px;
+        }
+        .time-inputs {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            width: 95%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .time-inputs div {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+            width: 48%;
+        }
+        .time-inputs label {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        .time-inputs input {
+            width: 80%;
+            margin-bottom: 0;
         }
         .buttons {
             display: flex;
@@ -54,97 +78,73 @@
             color: white;
         }
         button:hover { opacity: 0.8; }
-        #status { margin-top: 20px; font-weight: bold; }
+        #status { margin-top: 20px; font-weight: bold; font-size: 14px; }
+        .aviso { font-size: 12px; color: #777; margin-top: 15px;}
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>Baixar do YouTube</h2>
+    
     <input type="text" id="yt-url" placeholder="Cole o link do vídeo aqui...">
     
+    <div class="time-inputs">
+        <div>
+            <label for="start-time">Tempo de Início:</label>
+            <input type="text" id="start-time" value="00:00:00" placeholder="00:00:00">
+        </div>
+        <div>
+            <label for="end-time">Tempo de Fim (Opcional):</label>
+            <input type="text" id="end-time" placeholder="ex: 00:01:30">
+        </div>
+    </div>
+
     <div class="buttons">
         <button id="btn-mp3" onclick="iniciarDownload('mp3')">Baixar MP3</button>
         <button id="btn-mp4" onclick="iniciarDownload('mp4')">Baixar MP4</button>
     </div>
 
     <div id="status"></div>
+    <div class="aviso">Ao baixar sem alterar o tempo de fim, o vídeo completo será baixado. O primeiro download pode demorar até 50 segundos para iniciar caso o servidor esteja em repouso.</div>
 </div>
 
 <script>
-    // Suas credenciais da RapidAPI
-    const RAPIDAPI_KEY = '53437ea1famsh3af8f3a44a02dd4p1fcc2ejsn9ebe5c3a2bef'; 
-    const RAPIDAPI_HOST = 'youtube-media-downloader.p.rapidapi.com';
-
-    // Função para extrair o ID de qualquer formato de link do YouTube
-    function extrairVideoId(url) {
-        const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
-        const match = url.match(regex);
-        return match ? match[1] : null;
-    }
-
-    async function iniciarDownload(formato) {
-        const urlInput = document.getElementById('yt-url').value;
+    function iniciarDownload(formato) {
+        const urlVideo = document.getElementById('yt-url').value;
+        let start = document.getElementById('start-time').value.trim();
+        let end = document.getElementById('end-time').value.trim();
         const statusDiv = document.getElementById('status');
 
-        const videoId = extrairVideoId(urlInput);
-
-        if (!videoId) {
-            statusDiv.innerText = "Link inválido. Por favor, cole a URL completa de um vídeo do YouTube.";
+        if (!urlVideo) {
+            statusDiv.innerText = "Por favor, insira um link válido do YouTube.";
             statusDiv.style.color = "red";
             return;
         }
 
-        statusDiv.innerText = `Processando ${formato.toUpperCase()}... Aguarde.`;
+        // Se o usuário apagar o início, garante que comece do zero
+        if (!start) start = "00:00:00";
+        
+        statusDiv.innerText = "Processando... O download começará automaticamente em instantes.";
         statusDiv.style.color = "#333";
 
-        // URL da API dinâmica baseada no ID extraído
-        const urlApi = `https://${RAPIDAPI_HOST}/v2/video/details?videoId=${videoId}&urlAccess=normal&videos=auto&audios=auto`;
+        // URL base do seu servidor no Render
+        const BASE_URL = "https://meu-downloader-api.onrender.com";
         
-        const options = {
-            method: 'GET',
-            headers: {
-                'x-rapidapi-key': RAPIDAPI_KEY,
-                'x-rapidapi-host': RAPIDAPI_HOST
-            }
-        };
-
-        try {
-            const response = await fetch(urlApi, options);
-            const data = await response.json();
-            
-            // Inspecione o objeto completo no console do navegador para entender a estrutura
-            console.log("Resposta da API:", data);
-
-            let linkDownload = null;
-
-            // Lógica de navegação no JSON (Pode variar dependendo da estrutura exata da API)
-            // Lógica nova, mapeada corretamente para a resposta da API
-            if (formato === 'mp4' && data.videos && data.videos.items && data.videos.items.length > 0) {
-                // Pega a URL do primeiro item da lista de vídeos
-                linkDownload = data.videos.items[0].url; 
-            } else if (formato === 'mp3' && data.audios && data.audios.items && data.audios.items.length > 0) {
-                // Pega a URL do primeiro item da lista de áudios
-                linkDownload = data.audios.items[0].url; 
-            }
-
-            if (linkDownload) { 
-                statusDiv.innerText = "Pronto! Iniciando download...";
-                statusDiv.style.color = "green";
-                
-                // Redireciona o usuário para o link direto do arquivo
-                window.location.href = linkDownload;
-            } else {
-                statusDiv.innerText = "Formato não encontrado ou indisponível para este vídeo.";
-                statusDiv.style.color = "red";
-            }
-        } catch (error) {
-            console.error("Erro na requisição:", error);
-            statusDiv.innerText = "Erro de conexão com o servidor. Tente novamente.";
-            statusDiv.style.color = "red";
+        // Monta a URL de chamada. Se houver tempo de fim, adiciona o parâmetro.
+        let urlChamada = `${BASE_URL}/download?url=${encodeURIComponent(urlVideo)}&start=${start}&format=${formato}`;
+        if (end) {
+            urlChamada += `&end=${end}`;
         }
+
+        // O navegador fará a requisição e começará a baixar o arquivo gerado
+        window.location.href = urlChamada;
+        
+        setTimeout(() => {
+            statusDiv.innerText = "";
+        }, 10000); // Limpa a mensagem após 10 segundos
     }
 </script>
-    
+
 </body>
 </html>
