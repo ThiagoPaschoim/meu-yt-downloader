@@ -79,6 +79,14 @@
     <h2>1. Baixar Vídeo do YouTube</h2>
     <input type="text" id="yt-url" placeholder="Cole o link do vídeo aqui...">
     
+    <div style="margin-bottom: 20px; text-align: left; width: 90%; margin-left: auto; margin-right: auto;">
+        <label for="download-quality" style="font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; display: block;">Qualidade do Arquivo:</label>
+        <select id="download-quality" style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px;">
+            <option value="alta">Alta (Original / Mais pesado)</option>
+            <option value="media">Média (Equilíbrio)</option>
+            <option value="baixa">Baixa (Mais leve / Economiza dados)</option>
+        </select>
+    </div>
     <div class="buttons">
         <button class="btn-green" onclick="baixarRapidAPI('mp3')">Baixar MP3</button>
         <button class="btn-red" onclick="baixarRapidAPI('mp4')">Baixar MP4</button>
