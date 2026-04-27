@@ -164,14 +164,22 @@
                 }
             } 
             // Lógica para MP3
+// Lógica para MP3
             else if (formato === 'mp3' && data.audios && data.audios.items && data.audios.items.length > 0) {
-                const items = data.audios.items;
+                // Filtra a lista para pegar APENAS arquivos que não sejam webm/weba (foca em m4a/mp4)
+                const items = data.audios.items.filter(item => 
+                    item.mimeType && !item.mimeType.includes('webm')
+                );
+
+                // Prevenção: se o filtro excluir todos, volta a usar a lista original
+                const listaFinal = items.length > 0 ? items : data.audios.items;
+
                 if (qualidade === 'alta') {
-                    linkDownload = items[0].url;
+                    linkDownload = listaFinal[0].url;
                 } else if (qualidade === 'media') {
-                    linkDownload = items[Math.floor(items.length / 2)].url;
+                    linkDownload = listaFinal[Math.floor(listaFinal.length / 2)].url;
                 } else {
-                    linkDownload = items[items.length - 1].url;
+                    linkDownload = listaFinal[listaFinal.length - 1].url;
                 }
             }
 
