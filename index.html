@@ -128,6 +128,7 @@
 
     async function baixarRapidAPI(formato) {
         const urlInput = document.getElementById('yt-url').value;
+        const qualidade = document.getElementById('download-quality').value; // Captura a qualidade escolhida
         const statusDiv = document.getElementById('status-download');
         const videoId = extrairVideoId(urlInput);
 
@@ -137,7 +138,7 @@
             return;
         }
 
-        statusDiv.innerText = `Buscando links para ${formato.toUpperCase()}...`;
+        statusDiv.innerText = `Buscando links para ${formato.toUpperCase()} em qualidade ${qualidade}...`;
         statusDiv.style.color = "#333";
 
         const urlApi = `https://${RAPIDAPI_HOST}/v2/video/details?videoId=${videoId}`;
@@ -150,10 +151,28 @@
             const data = await response.json();
             
             let linkDownload = null;
+            
+            // Lógica para MP4
             if (formato === 'mp4' && data.videos && data.videos.items && data.videos.items.length > 0) {
-                linkDownload = data.videos.items[0].url; 
-            } else if (formato === 'mp3' && data.audios && data.audios.items && data.audios.items.length > 0) {
-                linkDownload = data.audios.items[0].url; 
+                const items = data.videos.items;
+                if (qualidade === 'alta') {
+                    linkDownload = items[0].url; // O primeiro costuma ser o melhor
+                } else if (qualidade === 'media') {
+                    linkDownload = items[Math.floor(items.length / 2)].url; // Pega o item bem no meio da lista
+                } else {
+                    linkDownload = items[items.length - 1].url; // Pega o último item (geralmente o menor)
+                }
+            } 
+            // Lógica para MP3
+            else if (formato === 'mp3' && data.audios && data.audios.items && data.audios.items.length > 0) {
+                const items = data.audios.items;
+                if (qualidade === 'alta') {
+                    linkDownload = items[0].url;
+                } else if (qualidade === 'media') {
+                    linkDownload = items[Math.floor(items.length / 2)].url;
+                } else {
+                    linkDownload = items[items.length - 1].url;
+                }
             }
 
             if (linkDownload) { 
