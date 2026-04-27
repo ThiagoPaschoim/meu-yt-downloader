@@ -3,35 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YT Downloader com Corte</title>
+    <title>YT Suite Pessoal</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
+            background-color: #f0f2f5;
             color: #333;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
+            padding: 40px 20px;
             margin: 0;
         }
         .container {
             background: #fff;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             text-align: center;
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
+            margin-bottom: 30px;
         }
-        input[type="text"] {
+        h2 { margin-top: 0; color: #2c3e50; font-size: 20px;}
+        input[type="text"], input[type="file"] {
             width: 90%;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 20px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            font-size: 16px;
+            font-size: 15px;
         }
         .time-inputs {
             display: flex;
@@ -53,96 +54,176 @@
             margin-bottom: 5px;
             color: #555;
         }
-        .time-inputs input {
-            width: 80%;
-            margin-bottom: 0;
-        }
-        .buttons {
-            display: flex;
-            justify-content: space-around;
-        }
+        .time-inputs input { width: 80%; margin-bottom: 0; }
+        .buttons { display: flex; justify-content: space-around; }
         button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             border: none;
             border-radius: 5px;
-            font-size: 16px;
+            font-size: 15px;
+            font-weight: bold;
             cursor: pointer;
-            transition: background 0.3s;
-        }
-        #btn-mp3 {
-            background-color: #1db954;
-            color: white;
-        }
-        #btn-mp4 {
-            background-color: #e50914;
-            color: white;
+            transition: opacity 0.3s;
+            width: 45%;
         }
         button:hover { opacity: 0.8; }
-        #status { margin-top: 20px; font-weight: bold; font-size: 14px; }
-        .aviso { font-size: 12px; color: #777; margin-top: 15px;}
+        .btn-green { background-color: #1db954; color: white; }
+        .btn-red { background-color: #e50914; color: white; }
+        .btn-blue { background-color: #007bff; color: white; width: 100%;}
+        .status { margin-top: 20px; font-weight: bold; font-size: 14px; min-height: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Baixar do YouTube</h2>
-    
+    <h2>1. Baixar Vídeo do YouTube</h2>
     <input type="text" id="yt-url" placeholder="Cole o link do vídeo aqui...">
+    
+    <div class="buttons">
+        <button class="btn-green" onclick="baixarRapidAPI('mp3')">Baixar MP3</button>
+        <button class="btn-red" onclick="baixarRapidAPI('mp4')">Baixar MP4</button>
+    </div>
+    <div id="status-download" class="status"></div>
+</div>
+
+<div class="container">
+    <h2>2. Cortar Arquivo (MP4 ou MP3)</h2>
+    <input type="file" id="local-file" accept="video/mp4,audio/mp3">
     
     <div class="time-inputs">
         <div>
-            <label for="start-time">Tempo de Início:</label>
-            <input type="text" id="start-time" value="00:00:00" placeholder="00:00:00">
+            <label>Tempo de Início (HH:MM:SS):</label>
+            <input type="text" id="start-time" value="00:00:00">
         </div>
         <div>
-            <label for="end-time">Tempo de Fim (Opcional):</label>
+            <label>Tempo de Fim (Opcional):</label>
             <input type="text" id="end-time" placeholder="ex: 00:01:30">
         </div>
     </div>
 
-    <div class="buttons">
-        <button id="btn-mp3" onclick="iniciarDownload('mp3')">Baixar MP3</button>
-        <button id="btn-mp4" onclick="iniciarDownload('mp4')">Baixar MP4</button>
-    </div>
-
-    <div id="status"></div>
-    <div class="aviso">Ao baixar sem alterar o tempo de fim, o vídeo completo será baixado. O primeiro download pode demorar até 50 segundos para iniciar caso o servidor esteja em repouso.</div>
+    <button class="btn-blue" onclick="cortarArquivo()">Processar e Cortar</button>
+    <div id="status-corte" class="status"></div>
 </div>
 
 <script>
-    function iniciarDownload(formato) {
-        const urlVideo = document.getElementById('yt-url').value;
-        let start = document.getElementById('start-time').value.trim();
-        let end = document.getElementById('end-time').value.trim();
-        const statusDiv = document.getElementById('status');
+    // --- LÓGICA DA CAIXA 1 (RapidAPI) ---
+    // Lembre-se de colocar sua chave do RapidAPI aqui
+    const RAPIDAPI_KEY = 'SUA_CHAVE_AQUI'; 
+    const RAPIDAPI_HOST = 'youtube-media-downloader.p.rapidapi.com';
 
-        if (!urlVideo) {
-            statusDiv.innerText = "Por favor, insira um link válido do YouTube.";
+    function extrairVideoId(url) {
+        const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+        const match = url.match(regex);
+        return match ? match[1] : null;
+    }
+
+    async function baixarRapidAPI(formato) {
+        const urlInput = document.getElementById('yt-url').value;
+        const statusDiv = document.getElementById('status-download');
+        const videoId = extrairVideoId(urlInput);
+
+        if (!videoId) {
+            statusDiv.innerText = "Link inválido do YouTube.";
             statusDiv.style.color = "red";
             return;
         }
 
-        // Se o usuário apagar o início, garante que comece do zero
-        if (!start) start = "00:00:00";
-        
-        statusDiv.innerText = "Processando... O download começará automaticamente em instantes.";
+        statusDiv.innerText = `Buscando links para ${formato.toUpperCase()}...`;
         statusDiv.style.color = "#333";
 
-        // URL base do seu servidor no Render
-        const BASE_URL = "https://meu-downloader-api.onrender.com";
+        const urlApi = `https://${RAPIDAPI_HOST}/v2/video/details?videoId=${videoId}`;
         
-        // Monta a URL de chamada. Se houver tempo de fim, adiciona o parâmetro.
-        let urlChamada = `${BASE_URL}/download?url=${encodeURIComponent(urlVideo)}&start=${start}&format=${formato}`;
-        if (end) {
-            urlChamada += `&end=${end}`;
+        try {
+            const response = await fetch(urlApi, {
+                method: 'GET',
+                headers: { 'x-rapidapi-key': RAPIDAPI_KEY, 'x-rapidapi-host': RAPIDAPI_HOST }
+            });
+            const data = await response.json();
+            
+            let linkDownload = null;
+            if (formato === 'mp4' && data.videos && data.videos.items && data.videos.items.length > 0) {
+                linkDownload = data.videos.items[0].url; 
+            } else if (formato === 'mp3' && data.audios && data.audios.items && data.audios.items.length > 0) {
+                linkDownload = data.audios.items[0].url; 
+            }
+
+            if (linkDownload) { 
+                statusDiv.innerText = "Link encontrado! Redirecionando...";
+                statusDiv.style.color = "green";
+                window.location.href = linkDownload;
+            } else {
+                statusDiv.innerText = "Formato indisponível.";
+                statusDiv.style.color = "red";
+            }
+        } catch (error) {
+            statusDiv.innerText = "Erro na API de Download.";
+            statusDiv.style.color = "red";
+        }
+    }
+
+    // --- LÓGICA DA CAIXA 2 (Corte no Render) ---
+    async function cortarArquivo() {
+        const fileInput = document.getElementById('local-file');
+        let start = document.getElementById('start-time').value.trim();
+        let end = document.getElementById('end-time').value.trim();
+        const statusDiv = document.getElementById('status-corte');
+
+        if (fileInput.files.length === 0) {
+            statusDiv.innerText = "Selecione um arquivo primeiro.";
+            statusDiv.style.color = "red";
+            return;
         }
 
-        // O navegador fará a requisição e começará a baixar o arquivo gerado
-        window.location.href = urlChamada;
-        
-        setTimeout(() => {
-            statusDiv.innerText = "";
-        }, 10000); // Limpa a mensagem após 10 segundos
+        const file = fileInput.files[0];
+        // Aviso importante de tamanho para o servidor gratuito
+        if (file.size > 50 * 1024 * 1024) { 
+            statusDiv.innerText = "Aviso: Arquivos maiores que 50MB podem causar lentidão no plano gratuito do Render.";
+            statusDiv.style.color = "orange";
+        } else {
+            statusDiv.innerText = "Enviando arquivo para o servidor... Aguarde.";
+            statusDiv.style.color = "#333";
+        }
+
+        // Prepara os dados para enviar via POST (Upload)
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('start', start || "00:00:00");
+        if (end) formData.append('end', end);
+
+        // URL do seu backend de corte
+        const RENDER_URL = "https://meu-downloader-api.onrender.com/cut";
+
+        try {
+            const response = await fetch(RENDER_URL, {
+                method: 'POST',
+                body: formData // Envia o arquivo e os tempos
+            });
+
+            if (response.ok) {
+                statusDiv.innerText = "Arquivo cortado com sucesso! Iniciando download...";
+                statusDiv.style.color = "green";
+                
+                // Pega a resposta binária do arquivo cortado
+                const blob = await response.blob();
+                const urlObj = window.URL.createObjectURL(blob);
+                
+                // Cria um link invisível para forçar o download no navegador
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = urlObj;
+                a.download = `cortado_${file.name}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(urlObj);
+            } else {
+                const errorData = await response.json();
+                statusDiv.innerText = errorData.error || "Erro ao processar o arquivo.";
+                statusDiv.style.color = "red";
+            }
+        } catch (error) {
+            statusDiv.innerText = "Erro de conexão com o servidor de corte.";
+            statusDiv.style.color = "red";
+        }
     }
 </script>
 
